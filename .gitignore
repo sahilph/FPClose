@@ -1,0 +1,115 @@
+# Created by .ignore support plugin (hsz.mobi)
+### JetBrains template
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+.idea
+.idea/*
+.idea/*/*
+
+# Generated files
+.idea/**/contentModel.xml
+
+# Sensitive or high-churn files
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# Gradle
+.idea/**/gradle.xml
+.idea/**/libraries
+
+# Gradle and Maven with auto-import
+# When using Gradle or Maven with auto-import, you should exclude module files,
+# since they will be recreated, and may cause churn.  Uncomment if using
+# auto-import.
+# .idea/modules.xml
+# .idea/*.iml
+# .idea/modules
+# *.iml
+# *.ipr
+
+# CMake
+cmake-build-*/
+
+# Mongo Explorer plugin
+.idea/**/mongoSettings.xml
+
+# File-based project format
+*.iws
+
+# IntelliJ
+out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+# JIRA plugin
+atlassian-ide-plugin.xml
+
+# Cursive Clojure plugin
+.idea/replstate.xml
+
+# Crashlytics plugin (for Android Studio and IntelliJ)
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+# Editor-based Rest Client
+.idea/httpRequests
+
+# Android studio 3.1+ serialized cache file
+.idea/caches/build_file_checksums.ser
+
+### Scala template
+*.class
+*.log
+
+project/target/config-classes/$147fe202b4733be8ab89$.class
+project/target/config-classes/$147fe202b4733be8ab89.cache
+project/target/config-classes/$147fe202b4733be8ab89.class
+project/target/config-classes/$95a7421d2a39eb7f5c63$.class
+project/target/config-classes/$95a7421d2a39eb7f5c63.cache
+project/target/config-classes/$95a7421d2a39eb7f5c63.class
+project/target/config-classes/$9a7a897cb3ed78867ff0$.class
+project/target/config-classes/$9a7a897cb3ed78867ff0.cache
+project/target/config-classes/$9a7a897cb3ed78867ff0.class
+project/target/config-classes/$a86e002267fa2d62e9aa$.class
+project/target/config-classes/$a86e002267fa2d62e9aa.cache
+project/target/config-classes/$a86e002267fa2d62e9aa.class
+project/target/config-classes/$bc66f976534ff77d1866$.class
+project/target/config-classes/$bc66f976534ff77d1866.cache
+project/target/config-classes/$bc66f976534ff77d1866.class
+project/target/config-classes/$bee799b1d78b6c9d5ab0$.class
+project/target/config-classes/$bee799b1d78b6c9d5ab0.cache
+project/target/config-classes/$bee799b1d78b6c9d5ab0.class
+project/target/config-classes/$dc0047435f4cfb9322c4$.class
+project/target/config-classes/$dc0047435f4cfb9322c4.cache
+project/target/config-classes/$dc0047435f4cfb9322c4.class
+project/target/config-classes/$eab299169a6e4e2ae4f4$.class
+project/target/config-classes/$eab299169a6e4e2ae4f4.cache
+project/target/config-classes/$eab299169a6e4e2ae4f4.class
+project/target/config-classes/$f7b8d9d795e97a7f35eb$.class
+project/target/config-classes/$f7b8d9d795e97a7f35eb.cache
+project/target/config-classes/$f7b8d9d795e97a7f35eb.class
+project/target/streams/compile/compileIncSetup/
+project/*
+project
+src/test/
+
+target
+target/*
+
+build.sbt
