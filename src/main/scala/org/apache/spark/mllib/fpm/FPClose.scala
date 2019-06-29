@@ -285,17 +285,14 @@ class FPClose private[spark] (
       .map{
         case (ranks, count) => (count,ranks.toSet)
       }
-      .aggregateByKey(new CFIMap[Int], partitioner.numPartitions )(
+      .aggregateByKey(new CFIDS[Int], partitioner.numPartitions )(
         (map1, transaction) => map1.add(transaction),
         (map1,map2) => map1.merge(map2)
       )
       .flatMap{
-        case (count,ranks_map) =>
-        ranks_map.closed_map.map(x => (x,count))
+        case (count,transactions) =>
+          transactions.extract.map(x => (x,count))
       }
-
-
-
       .map { case (ranks, count) =>
       new ClosedItemset(ranks.map(i => freqItems(i)).toArray, count)
       }

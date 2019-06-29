@@ -13,8 +13,8 @@ object TestApp {
     conf.setAppName("FP Close")
     val sc = new SparkContext(conf)
 
-    //val data = sc.textFile("/home/sahil/.spark_bin/spark/data/mllib/sample_fpgrowth.txt")
-    val data = sc.textFile("/home/sahil/p_project/datasets/mushroom.dat")
+    val data = sc.textFile("/home/sahil/.spark_bin/spark/data/mllib/sample_fpgrowth.txt")
+    //val data = sc.textFile("/home/sahil/p_project/datasets/mushroom.dat")
 
     val transactions: RDD[Array[String]] = data.map(s => s.trim.split(' '))
 
