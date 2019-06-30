@@ -113,3 +113,5 @@ target
 target/*
 
 build.sbt
+
+op*
