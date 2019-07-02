@@ -1,3 +1,8 @@
+/**
+  * @author Sahil Phule
+  * This is a Closed Frequent Item Data Structure used for storing, adding, merging the closed itemsets.
+  * It is used in conjuction with the FPClose Class of Spark
+ */
 package org.apache.spark.mllib.fpm
 
 import scala.collection.mutable.ListBuffer
@@ -5,7 +10,7 @@ import scala.collection.mutable.ListBuffer
 private[fpm] class CFIDS[T] extends Serializable {
   private var closed_buffer = ListBuffer[Set[T]]()
   def merge(other: CFIDS[T]): this.type = {
-    other.closed_buffer.foreach { item =>
+    other.extract.foreach { item =>
       add(item)
     }
     this
