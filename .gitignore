@@ -228,3 +228,5 @@ nb-configuration.xml
 release.properties
 pom.xml.releaseBackup
 pom.xml.tag
+/src/main/scala/META-INF/
+src/main/scala/META-INF/
