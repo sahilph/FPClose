@@ -34,7 +34,6 @@ import org.apache.spark.annotation.Since
 import org.apache.spark.api.java.JavaRDD
 import org.apache.spark.api.java.JavaSparkContext.fakeClassTag
 import org.apache.spark.internal.Logging
-import org.apache.spark.mllib.fpm.FPGrowth._
 import org.apache.spark.mllib.fpm.FPClose._
 import org.apache.spark.mllib.util.{Loader, Saveable}
 import org.apache.spark.rdd.RDD
@@ -89,6 +88,7 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
     FPCloseModel.SaveLoadV1_0.load(sc, path)
   }
 
+  @Since("FP Close Mod")
   private[fpm] object SaveLoadV1_0 {
 
     private val thisFormatVersion = "1.0"
@@ -111,10 +111,10 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
 
       val itemType = ScalaReflection.schemaFor(tpe).dataType
       val fields = Array(StructField("items", ArrayType(itemType)),
-        StructField("freq", LongType))
+        StructField("freq", LongType), StructField("rowNumbers", ArrayType(LongType)))
       val schema = StructType(fields)
       val rowDataRDD = model.closedItemsets.map { x =>
-        Row(x.items.toSeq, x.freq)
+        Row(x.items.toSeq, x.freq, x.rowNumbers.toSeq)
       }
       spark.createDataFrame(rowDataRDD, schema).write.parquet(Loader.dataPath(path))
     }
@@ -132,11 +132,13 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
       loadImpl(freqItemsets, sample)
     }
 
+    @Since("FP Close Mod")
     def loadImpl[Item: ClassTag](freqItemsets: DataFrame, sample: Item): FPCloseModel[Item] = {
-      val freqItemsetsRDD = freqItemsets.select("items", "freq").rdd.map { x =>
+      val freqItemsetsRDD = freqItemsets.select("items", "freq", "rowNumbers").rdd.map { x =>
         val items = x.getAs[Seq[Item]](0).toArray
         val freq = x.getLong(1)
-        new ClosedItemset(items, freq)
+        val rowNumbers = x.getAs[Seq[Long]](2).toArray
+        new ClosedItemset(items, freq, rowNumbers)
       }
       new FPCloseModel(freqItemsetsRDD)
     }
@@ -156,6 +158,8 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
   * @param minSupport the minimal support level of the frequent pattern, any pattern that appears
   *                   more than (minSupport * size-of-the-dataset) times will be output
   * @param numPartitions number of partitions used by parallel FP-growth
+  * @param minItems The minimum number of items in closed itemset.
+  * @param genRows Generates the rownumbers in which the closed itemset as found.
   *
   * @see <a href="http://en.wikipedia.org/wiki/Association_rule_learning">
   * Association rule learning (Wikipedia)</a>
@@ -164,15 +168,17 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
 @Since("2.4.0")
 class FPClose private[spark] (
                                 private var minSupport: Double,
-                                private var numPartitions: Int) extends Logging with Serializable {
+                                private var numPartitions: Int,
+                                private var minItems: Long,
+                                private var genRows: Boolean) extends Logging with Serializable {
 
   /**
     * Constructs a default instance with default parameters {minSupport: `0.3`, numPartitions: same
-    * as the input data}.
+    * as the input data and minimum items as 0 (meaning all items)}.
     *
     */
   @Since("1.3.0")
-  def this() = this(0.3, -1)
+  def this() = this(0.3, -1, 0, false)
 
   /**
     * Sets the minimal support level (default: `0.3`).
@@ -199,7 +205,30 @@ class FPClose private[spark] (
   }
 
   /**
-    * Computes an FP-Growth model that contains frequent itemsets.
+    * Sets the minimum Items to be considered (default: `3`).
+    *
+    */
+  @Since("FP Close Mod")
+  def setMinItems(minItems: Long ): this.type = {
+    require(minItems >= 0 ,
+      s"Minimum Items should be >=0 but got ${minItems}")
+    this.minItems = minItems
+    this
+  }
+
+  /**
+    * Sets the whether to generate the row numbers or not (default: `false`).
+    *
+    */
+  @Since("FP Close Mod")
+  def setGenRowNumbers(genRows: Boolean ): this.type = {
+
+    this.genRows = genRows
+    this
+  }
+
+  /**
+    * Computes an FP-Close model that contains closed frequent itemsets.
  *
     * @param data input data set, each element contains a transaction
     * @return an [[FPCloseModel]]
@@ -216,7 +245,8 @@ class FPClose private[spark] (
     val numParts = if (numPartitions > 0) numPartitions else data.partitions.length
     val partitioner = new HashPartitioner(numParts)
     val freqItemsCount = genFreqItems(data, minCount, partitioner)
-    val closedItemsets = genClosedItemsets(data, minCount, freqItemsCount.map(_._1), partitioner)
+    var closedItemsets = genClosedItemsets(data, minCount, freqItemsCount.map(_._1), partitioner)
+    if(this.genRows){ closedItemsets = genRowNumbers(data,closedItemsets) }
     val itemSupport = freqItemsCount.map {
       case (item, cnt) => item -> cnt.toDouble / count
     }.toMap
@@ -265,43 +295,44 @@ class FPClose private[spark] (
     * @param partitioner partitioner used to distribute transactions
     * @return an RDD of (frequent itemset, count)
     */
+  @Since("FP Close Mod")
   private def genClosedItemsets[Item: ClassTag](
                                                data: RDD[Array[Item]],
                                                minCount: Long,
                                                freqItems: Array[Item],
-                                               partitioner: Partitioner):
+                                               partitioner: Partitioner
+                                               ):
                                                                           RDD[ClosedItemset[Item]] = {
     val itemToRank = freqItems.zipWithIndex.toMap
-    data
+    val closed_RDD = data
       .flatMap { transaction =>
-      genCondTransactions(transaction, itemToRank, partitioner)
+        genCondTransactions(transaction, itemToRank, partitioner)
       }
       .aggregateByKey(new FPTree[Int], partitioner.numPartitions)(
         (tree, transaction) => tree.add(transaction, 1L),
-          (tree1, tree2) => tree1.merge(tree2))
+        (tree1, tree2) => tree1.merge(tree2))
       .flatMap { case (part, tree) =>
         tree.extract(minCount, x => partitioner.getPartition(x) == part)
       }
-      .map{
-        case (ranks, count) => (count,ranks.toSet)
+      .map {
+        case (ranks, count) => (count, ranks.toSet)
       }
-      .aggregateByKey(new CFIDS[Int], partitioner.numPartitions )(
+      .aggregateByKey(new CFIDS[Int], partitioner.numPartitions)(
         (map1, transaction) => map1.add(transaction),
-        (map1,map2) => map1.merge(map2)
+        (map1, map2) => map1.merge(map2)
       )
-      .flatMap{
-        case (count,transactions) =>
-          transactions.extract.map(x => (x,count))
+      .flatMap {
+        case (count, transactions) =>
+          transactions.extract.map(x => (x, count))
       }
       .map { case (ranks, count) =>
-      new ClosedItemset(ranks.map(i => freqItems(i)).toArray, count)
-      }
+          new ClosedItemset(ranks.map(i => freqItems(i)).toArray, count, Array[Long]())
+    }
+    if (minItems > 0){
+      return closed_RDD.filter{x=> x.items.size >= minItems}
+    }
+    closed_RDD
   }
-
-
-
-
-
 
   /**
     * Generates conditional transactions.
@@ -330,6 +361,22 @@ class FPClose private[spark] (
     }
     output
   }
+
+  /**
+    * Generate row number for the closed item sets if gen row numbers is true
+    */
+  private def genRowNumbers[Item: ClassTag](data: RDD[Array[Item]],
+                                            closed_RDD: RDD[ClosedItemset[Item]]): RDD[ClosedItemset[Item]] = {
+    val dataWithIndex = data.zipWithIndex.map{case (v,k) => (k+1,v.toSet)}
+    val closed = closed_RDD.map(c => (c.freq,c.items.toSet))
+
+    val joined = closed.cartesian(dataWithIndex)
+    joined.filter{x => x._1._2.subsetOf(x._2._2)}
+        .map{x=> (x._1,x._2._1)}
+        .groupByKey()
+        .map{x=> new ClosedItemset(x._1._2.toArray,x._1._1,x._2)}
+
+  }
 }
 
 @Since("1.3.0")
@@ -345,7 +392,9 @@ object FPClose {
   @Since("1.3.0")
   class ClosedItemset[Item] @Since("1.3.0")(
                                             @Since("1.3.0") val items: Array[Item],
-                                            @Since("1.3.0") val freq: Long) extends Serializable {
+                                            @Since("1.3.0") val freq: Long,
+                                            @Since("FP Close Mod") val rowNumbers: Iterable[Long]
+                                            ) extends Serializable {
 
     /**
       * Returns items in a Java List.
@@ -357,7 +406,7 @@ object FPClose {
     }
 
     override def toString: String = {
-      s"${items.mkString("{", ",", "}")}: $freq"
+      s"${items.mkString("{", ",", "}")}: $freq ${rowNumbers.mkString("[", "," ,"]")}"
     }
   }
 

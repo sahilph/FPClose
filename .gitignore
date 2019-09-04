@@ -115,6 +115,7 @@ target/*
 build.sbt
 
 op*
+ip*
 
 .metadata
 bin/
