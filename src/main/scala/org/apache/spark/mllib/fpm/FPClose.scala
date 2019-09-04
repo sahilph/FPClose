@@ -88,6 +88,7 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
     FPCloseModel.SaveLoadV1_0.load(sc, path)
   }
 
+  @Since("FP Close Mod")
   private[fpm] object SaveLoadV1_0 {
 
     private val thisFormatVersion = "1.0"
@@ -131,6 +132,7 @@ object FPCloseModel extends Loader[FPCloseModel[_]] {
       loadImpl(freqItemsets, sample)
     }
 
+    @Since("FP Close Mod")
     def loadImpl[Item: ClassTag](freqItemsets: DataFrame, sample: Item): FPCloseModel[Item] = {
       val freqItemsetsRDD = freqItemsets.select("items", "freq", "rowNumbers").rdd.map { x =>
         val items = x.getAs[Seq[Item]](0).toArray
@@ -293,6 +295,7 @@ class FPClose private[spark] (
     * @param partitioner partitioner used to distribute transactions
     * @return an RDD of (frequent itemset, count)
     */
+  @Since("FP Close Mod")
   private def genClosedItemsets[Item: ClassTag](
                                                data: RDD[Array[Item]],
                                                minCount: Long,
